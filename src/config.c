@@ -303,6 +303,10 @@ void loadServerConfigFromString(char *config) {
             if ((server.repl_slave_ro = yesnotoi(argv[1])) == -1) {
                 err = "argument must be 'yes' or 'no'"; goto loaderr;
             }
+        } else if (!strcasecmp(argv[0],"slave-trans-write-cmd") && argc == 2){
+            if ((server.repl_slave_trans_write_cmd = yesnotoi(argv[1])) == -1) {
+                err = "argument must be 'yes' or 'no'"; goto loaderr;
+            }
         } else if (!strcasecmp(argv[0],"rdbcompression") && argc == 2) {
             if ((server.rdb_compression = yesnotoi(argv[1])) == -1) {
                 err = "argument must be 'yes' or 'no'"; goto loaderr;
@@ -785,7 +789,12 @@ void configSetCommand(redisClient *c) {
 
         if (yn == -1) goto badfmt;
         server.repl_slave_ro = yn;
-    } else if (!strcasecmp(c->argv[2]->ptr,"activerehashing")) {
+    } else if (!strcasecmp(c->argv[2]->ptr,"slave-trans-write-cmd")) {
+        int yn = yesnotoi(o->ptr);
+        
+        if (yn == -1) goto badfmt;
+        server.repl_slave_trans_write_cmd = yn;
+    }else if (!strcasecmp(c->argv[2]->ptr,"activerehashing")) {
         int yn = yesnotoi(o->ptr);
 
         if (yn == -1) goto badfmt;
@@ -1085,6 +1094,8 @@ void configGetCommand(redisClient *c) {
             server.repl_serve_stale_data);
     config_get_bool_field("slave-read-only",
             server.repl_slave_ro);
+    config_get_bool_field("slave-trans-write-cmd",
+                          server.repl_slave_trans_write_cmd);
     config_get_bool_field("stop-writes-on-bgsave-error",
             server.stop_writes_on_bgsave_err);
     config_get_bool_field("daemonize", server.daemonize);
@@ -1815,6 +1826,7 @@ int rewriteConfig(char *path) {
     rewriteConfigStringOption(state,"masterauth",server.masterauth,NULL);
     rewriteConfigYesNoOption(state,"slave-serve-stale-data",server.repl_serve_stale_data,REDIS_DEFAULT_SLAVE_SERVE_STALE_DATA);
     rewriteConfigYesNoOption(state,"slave-read-only",server.repl_slave_ro,REDIS_DEFAULT_SLAVE_READ_ONLY);
+    rewriteConfigYesNoOption(state,"slave-trans-write-cmd",server.repl_slave_trans_write_cmd,REDIS_DEFAULT_SLAVE_TRANS_WRITE_CMD);
     rewriteConfigNumericalOption(state,"repl-ping-slave-period",server.repl_ping_slave_period,REDIS_REPL_PING_SLAVE_PERIOD);
     rewriteConfigNumericalOption(state,"repl-timeout",server.repl_timeout,REDIS_REPL_TIMEOUT);
     rewriteConfigBytesOption(state,"repl-backlog-size",server.repl_backlog_size,REDIS_DEFAULT_REPL_BACKLOG_SIZE);

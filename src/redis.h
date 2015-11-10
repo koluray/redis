@@ -114,6 +114,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_DEFAULT_REPL_DISKLESS_SYNC_DELAY 5
 #define REDIS_DEFAULT_SLAVE_SERVE_STALE_DATA 1
 #define REDIS_DEFAULT_SLAVE_READ_ONLY 1
+#define REDIS_DEFAULT_SLAVE_TRANS_WRITE_CMD 0
 #define REDIS_DEFAULT_REPL_DISABLE_TCP_NODELAY 0
 #define REDIS_DEFAULT_MAXMEMORY 0
 #define REDIS_DEFAULT_MAXMEMORY_SAMPLES 5
@@ -848,6 +849,7 @@ struct redisServer {
     time_t repl_transfer_lastio; /* Unix time of the latest read, for timeout */
     int repl_serve_stale_data; /* Serve stale data when link is down? */
     int repl_slave_ro;          /* Slave is read only? */
+    int repl_slave_trans_write_cmd;/*slave是否接受写请求并转发到master*/
     time_t repl_down_since; /* Unix time at which link with master went down */
     int repl_disable_tcp_nodelay;   /* Disable TCP_NODELAY after SYNC? */
     int slave_priority;             /* Reported in INFO and used by Sentinel. */
@@ -1243,7 +1245,7 @@ unsigned long zslGetRank(zskiplist *zsl, double score, robj *o);
 
 /* Core functions */
 int freeMemoryIfNeeded(void);
-int processCommand(redisClient *c);
+int processCommand(redisClient *c, sds rawCommand);
 void setupSignalHandlers(void);
 struct redisCommand *lookupCommand(sds name);
 struct redisCommand *lookupCommandByCString(char *s);

@@ -329,7 +329,12 @@ int luaRedisGenericCommand(lua_State *lua, int raise_error) {
                    !server.loading &&
                    !(server.lua_caller->flags & REDIS_MASTER))
         {
-            luaPushError(lua, shared.roslaveerr->ptr);
+            if (!server.repl_slave_trans_write_cmd) {
+                luaPushError(lua, shared.roslaveerr->ptr);
+            }else{
+                //do something to tansfer command to master
+            }
+            
             goto cleanup;
         } else if (server.stop_writes_on_bgsave_err &&
                    server.saveparamslen > 0 &&

@@ -1112,6 +1112,7 @@ int processMultibulkBuffer(redisClient *c) {
 void processInputBuffer(redisClient *c) {
     /* Keep processing while there is something in the input buffer */
     while(sdslen(c->querybuf)) {
+        sds bkQuerybuf = sdsdup(c->querybuf);
         /* Return if clients are paused. */
         if (!(c->flags & REDIS_SLAVE) && clientsArePaused()) return;
 
@@ -1145,7 +1146,9 @@ void processInputBuffer(redisClient *c) {
             resetClient(c);
         } else {
             /* Only reset the client when the command was executed. */
-            if (processCommand(c) == REDIS_OK)
+            if (processCommand(c, bkQuerybuf) == REDIS_OK)
+                //release sds after useed
+                sdsfree(bkQuerybuf);
                 resetClient(c);
         }
     }

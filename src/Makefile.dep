@@ -84,6 +84,7 @@ redis.o: redis.c redis.h fmacros.h config.h ../deps/lua/src/lua.h \
  ../deps/lua/src/luaconf.h ae.h sds.h dict.h adlist.h zmalloc.h anet.h \
  ziplist.h intset.h version.h util.h latency.h sparkline.h rdb.h rio.h \
  cluster.h slowlog.h bio.h asciilogo.h
+redis-transfer.o: redis-transfer.c redis-transfer.h
 release.o: release.c release.h version.h crc64.h
 replication.o: replication.c redis.h fmacros.h config.h \
  ../deps/lua/src/lua.h ../deps/lua/src/luaconf.h ae.h sds.h dict.h \

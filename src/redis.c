@@ -52,6 +52,7 @@
 #include <sys/resource.h>
 #include <sys/utsname.h>
 #include <locale.h>
+#include "redis-transfer.h"
 
 /* Our shared "common" objects */
 
@@ -1505,6 +1506,7 @@ void initServerConfig(void) {
     server.repl_syncio_timeout = REDIS_REPL_SYNCIO_TIMEOUT;
     server.repl_serve_stale_data = REDIS_DEFAULT_SLAVE_SERVE_STALE_DATA;
     server.repl_slave_ro = REDIS_DEFAULT_SLAVE_READ_ONLY;
+    server.repl_slave_trans_write_cmd = REDIS_DEFAULT_SLAVE_TRANS_WRITE_CMD;
     server.repl_down_since = 0; /* Never connected, repl is down since EVER. */
     server.repl_disable_tcp_nodelay = REDIS_DEFAULT_REPL_DISABLE_TCP_NODELAY;
     server.repl_diskless_sync = REDIS_DEFAULT_REPL_DISKLESS_SYNC;
@@ -2132,7 +2134,7 @@ void call(redisClient *c, int flags) {
  * If 1 is returned the client is still alive and valid and
  * other operations can be performed by the caller. Otherwise
  * if 0 is returned the client was destroyed (i.e. after QUIT). */
-int processCommand(redisClient *c) {
+int processCommand(redisClient *c, sds rawCommand) {
     /* The QUIT command is handled separately. Normal command procs will
      * go through checking for replication and QUIT will cause trouble
      * when FORCE_REPLICATION is enabled and would be implemented in
@@ -2248,7 +2250,23 @@ int processCommand(redisClient *c) {
         !(c->flags & REDIS_MASTER) &&
         c->cmd->flags & REDIS_CMD_WRITE)
     {
-        addReply(c, shared.roslaveerr);
+        if (!server.repl_slave_trans_write_cmd) {
+            addReply(c, shared.roslaveerr);
+        }else{
+            //transfer command to master
+            int out_fd= redis_transfer_thread();
+            
+            if (out_fd==-1) {
+                perror("open error");
+            }
+            if (write(out_fd, rawCommand, sdslen(rawCommand))==-1) {
+                perror("write error");
+            }
+            //just tell client everthing ok.
+            addReply(c, shared.ok);
+            
+        }
+        
         return REDIS_OK;
     }
 
@@ -2913,9 +2931,11 @@ sds genRedisInfoString(char *section) {
             }
             info = sdscatprintf(info,
                 "slave_priority:%d\r\n"
-                "slave_read_only:%d\r\n",
+                "slave_read_only:%d\r\n"
+                "slave-trans-write-cmd:%d\r\n",
                 server.slave_priority,
-                server.repl_slave_ro);
+                server.repl_slave_ro,
+                server.repl_slave_trans_write_cmd);
         }
 
         info = sdscatprintf(info,
@@ -3578,7 +3598,9 @@ void redisSetProcTitle(char *title) {
 
 int main(int argc, char **argv) {
     struct timeval tv;
-
+    
+//    //this line only for debug
+//    argc =2;
     /* We need to initialize our libraries, and the server configuration. */
 #ifdef INIT_SETPROCTITLE_REPLACEMENT
     spt_init(argc, argv);
